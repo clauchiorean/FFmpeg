@@ -1424,27 +1424,6 @@ static int mxf_add_timecode_metadata(AVDictionary **pm, const char *key, AVTimec
     return 0;
 }
 
-static MXFTimecodeComponent* mxf_resolve_timecode_component(MXFContext *mxf, UID *strong_ref)
-{
-    MXFStructuralComponent *component = NULL;
-    MXFPulldownComponent *pulldown = NULL;
-
-    component = mxf_resolve_strong_ref(mxf, strong_ref, AnyType);
-    if (!component)
-        return NULL;
-
-    switch (component->type) {
-    case TimecodeComponent:
-        return (MXFTimecodeComponent*)component;
-    case PulldownComponent: /* timcode component may be located on a pulldown component */
-        pulldown = (MXFPulldownComponent*)component;
-        return mxf_resolve_strong_ref(mxf, &pulldown->input_segment_ref, TimecodeComponent);
-    default:
-        break;
-    }
-    return NULL;
-}
-
 static int mxf_parse_physical_source_package(MXFContext *mxf, MXFTrack *source_track, AVStream *st)
 {
     MXFPackage *temp_package = NULL;
@@ -1453,6 +1432,7 @@ static int mxf_parse_physical_source_package(MXFContext *mxf, MXFTrack *source_t
     MXFStructuralComponent *component = NULL;
     MXFStructuralComponent *sourceclip = NULL;
     MXFTimecodeComponent *mxf_tc = NULL;
+    MXFPulldownComponent *mxf_pulldown = NULL;
     int i, j, k;
     AVTimecode tc;
     int flags;
@@ -1495,9 +1475,19 @@ static int mxf_parse_physical_source_package(MXFContext *mxf, MXFTrack *source_t
             }
 
             for (k = 0; k < physical_track->sequence->structural_components_count; k++) {
-                if (!(mxf_tc = mxf_resolve_timecode_component(mxf, &physical_track->sequence->structural_components_refs[k])))
-                    continue;
+                component = mxf_resolve_strong_ref(mxf, &physical_track->sequence->structural_components_refs[k], TimecodeComponent);
+                if (!component){
+                    /* timcode component may be located on a pulldown component */
+                    component = mxf_resolve_strong_ref(mxf, &physical_track->sequence->structural_components_refs[k], PulldownComponent);
+                    if (!component)
+                        continue;
+                    mxf_pulldown = (MXFPulldownComponent*)component;
+                    component = mxf_resolve_strong_ref(mxf, &mxf_pulldown->input_segment_ref, TimecodeComponent);
+                    if (!component)
+                        continue;
+                }
 
+                mxf_tc = (MXFTimecodeComponent*)component;
                 flags = mxf_tc->drop_frame == 1 ? AV_TIMECODE_FLAG_DROPFRAME : 0;
                 /* scale sourceclip start_position to match physical track edit rate */
                 start_position = av_rescale_q(sourceclip->start_position,
@@ -1781,8 +1771,6 @@ static int mxf_parse_structural_metadata(MXFContext *mxf)
             if (source_track->sequence->origin) {
                 av_dict_set_int(&st->metadata, "source_track_origin", source_track->sequence->origin, 0);
             }
-            if (descriptor->aspect_ratio.num && descriptor->aspect_ratio.den)
-                st->display_aspect_ratio = descriptor->aspect_ratio;
         } else if (st->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
             container_ul = mxf_get_codec_ul(mxf_sound_essence_container_uls, essence_container_ul);
             /* Only overwrite existing codec ID if it is unset or A-law, which is the default according to SMPTE RP 224. */

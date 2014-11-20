@@ -103,7 +103,6 @@ static int64_t wrap_timestamp(AVStream *st, int64_t timestamp)
 }
 
 MAKE_ACCESSORS(AVStream, stream, AVRational, r_frame_rate)
-MAKE_ACCESSORS(AVStream, stream, char *, recommended_encoder_configuration)
 MAKE_ACCESSORS(AVFormatContext, format, AVCodec *, video_codec)
 MAKE_ACCESSORS(AVFormatContext, format, AVCodec *, audio_codec)
 MAKE_ACCESSORS(AVFormatContext, format, AVCodec *, subtitle_codec)
@@ -3347,11 +3346,6 @@ int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
                     st->r_frame_rate.den = st->time_base.num;
                 }
             }
-            if (st->display_aspect_ratio.num && st->display_aspect_ratio.den) {
-                AVRational hw_ratio = { st->codec->height, st->codec->width };
-                st->sample_aspect_ratio = av_mul_q(st->display_aspect_ratio,
-                                                   hw_ratio);
-            }
         } else if (st->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
             if (!st->codec->bits_per_coded_sample)
                 st->codec->bits_per_coded_sample =
@@ -3543,7 +3537,6 @@ void ff_free_stream(AVFormatContext *s, AVStream *st) {
     if (st->info)
         av_freep(&st->info->duration_error);
     av_freep(&st->info);
-    av_freep(&st->recommended_encoder_configuration);
     av_freep(&s->streams[ --s->nb_streams ]);
 }
 
