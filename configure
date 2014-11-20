@@ -136,6 +136,7 @@ Component options:
   --disable-pthreads       disable pthreads [auto]
   --disable-w32threads     disable Win32 threads [auto]
   --disable-os2threads     disable OS/2 threads [auto]
+  --disable-winrtapi       disable windows runtime API
   --disable-network        disable network support [no]
   --disable-dct            disable DCT code
   --disable-dwt            disable DWT code
@@ -147,7 +148,6 @@ Component options:
   --disable-fft            disable FFT code
   --disable-faan           disable floating point AAN (I)DCT code
   --disable-pixelutils     disable pixel utils in libavutil
-  --disable-winrtapi       disable windows runtime API
   
 Hardware accelerators:
   --disable-dxva2          disable DXVA2 code [autodetect]
@@ -3905,6 +3905,7 @@ if test "$?" != 0; then
 fi
 
 add_cppflags -D_ISOC99_SOURCE
+add_cxxflags -D__STDC_CONSTANT_MACROS
 check_cflags -std=c99
 check_cc -D_FILE_OFFSET_BITS=64 <<EOF && add_cppflags -D_FILE_OFFSET_BITS=64
 #include <stdlib.h>
@@ -4439,8 +4440,9 @@ if enabled_any arm aarch64 || enabled_all ppc altivec && enabled asm; then
 
     [ $target_os = "darwin" ] && gaspp_as_type="apple-$gaspp_as_type"
 
-    check_cmd gas-preprocessor.pl -arch $arch -as-type $gaspp_as_type -- $as $as_noop &&
-        gas="gas-preprocessor.pl -arch $arch -as-type $gaspp_as_type -- $as"
+    test "${as#*gas-preprocessor.pl}" != "$as" ||
+    check_cmd gas-preprocessor.pl -arch $arch -as-type $gaspp_as_type -- ${as:=$cc} $as_noop &&
+        gas="${gas:=gas-preprocessor.pl} -arch $arch -as-type $gaspp_as_type -- ${as:=$cc}"
 
     if ! check_gas ; then
         as=${gas:=$as}
@@ -4455,6 +4457,8 @@ EOF
 fi
 
 check_inline_asm inline_asm_labels '"1:\n"'
+
+check_inline_asm inline_asm_nonlocal_labels '"Label:\n"'
 
 if enabled aarch64; then
     enabled armv8 && check_insn armv8 'prfm   pldl1strm, [x0]'
