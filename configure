@@ -4732,10 +4732,25 @@ check_func_headers windows.h SetConsoleTextAttribute
 check_func_headers windows.h Sleep
 check_func_headers windows.h VirtualAlloc
 check_struct windows.h "CONDITION_VARIABLE" Ptr
+
 if enabled winrtapi; then
     disable SetConsoleTextAttribute
     disable GetProcessAffinityMask
     disable VirtualAlloc
+    disable fcntl
+    disable gmtime_r
+    disable inet_aton
+    disable localtime_r
+    disable sched_getaffinity
+    disable sysctl
+    disable strerror_r
+    disable mmap
+    disable mkstemp
+    disable posix_memalign
+    disable gettimeofday
+    disable usleep
+    disable sync_val_compare_and_swap
+    disable atomic_compare_exchange
 fi
     
 check_func_headers glob.h glob

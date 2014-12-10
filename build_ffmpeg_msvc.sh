@@ -1,7 +1,7 @@
 #!/bin/sh
 
 arch=x86
-archdir=arm
+archdir=Win32
 clean_build=true
 
 for opt in "$@"
@@ -9,8 +9,9 @@ do
     case "$opt" in
     x86)
             ;;
-    x86)
-            arch=x86          
+    arm)
+            arch=arm
+            archdir=arm
             ;;
     quick)
             clean_build=false
@@ -55,17 +56,27 @@ configure() (
     --disable-programs              \
     --enable-debug                  \
     --disable-doc                   \
-    --arch=arm                      \
-    --cpu=armv7-a                   \
     --enable-cross-compile          \
-    --target-os=win32               \
-    --as=armasm                     \
-    --enable-thumb                  \
-    --toolchain=msvc"
+    --target-os=win32"
 
-  EXTRA_CFLAGS="-D_WIN32_WINNT=0x0602 -MDd -D_ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE -D_ARM_ -D_WINAPI_FAMILY=WINAPI_FAMILY_APP -D__ARM_PCS_VFP"
+  EXTRA_CFLAGS="-D_WIN32_WINNT=0x0602 -MDd -D_WINAPI_FAMILY=WINAPI_FAMILY_APP"
   EXTRA_LDFLAGS="-NODEFAULTLIB:libcmt"
-  
+
+case "$arch"  in
+    x86)
+        OPTIONS+="
+            --arch=x86                      \
+            --as=yasm"
+            ;;
+    arm)
+        OPTIONS+="    
+            --arch=arm                      \
+            --cpu=armv7-a                   \
+            --as=armasm                     \
+            --enable-thumb"
+        EXTRA_CFLAGS+=" -D_ARM_WINAPI_PARTITION_DESKTOP_SDK_AVAILABLE  -D__ARM_PCS_VFP -D_ARM_"
+            ;;
+esac
   sh configure --toolchain=msvc --enable-debug --extra-cflags="${EXTRA_CFLAGS}" --extra-ldflags="${EXTRA_LDFLAGS}" ${OPTIONS}
 )
 
