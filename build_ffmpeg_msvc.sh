@@ -1,17 +1,13 @@
 #!/bin/sh
-
 arch=x86
-archdir=Win32
+archdir=
 clean_build=true
-
+enable_debug=true
 for opt in "$@"
 do
     case "$opt" in
-    x86)
-            ;;
-    arm)
-            arch=arm
-            archdir=arm
+    release)
+            enable_debug=false
             ;;
     quick)
             clean_build=false
@@ -22,21 +18,53 @@ do
     esac
 done
 
+probe_arch() {
+  if cl 2>&1 | grep -q 'ARM'; then
+    arch=arm
+  else
+    arch=x86
+  fi
+  if $enable_debug ; then
+    archdir=bin_${arch}d
+  else
+    archdir=bin_${arch}
+  fi
+}
+
 make_dirs() (
-  if [ ! -d bin_${archdir}d/lib ]; then
-    mkdir -p bin_${archdir}d/lib
+  if [ ! -d $archdir/lib ]; then
+    mkdir -p $archdir/lib
   fi
 )
 
 copy_libs() (
-  cp lib*/*.dll bin_${archdir}d
-  cp lib*/*.pdb bin_${archdir}d
-  cp lib*/*.lib bin_${archdir}d/lib
+  cp lib*/*.dll $archdir
+  cp lib*/*.pdb $archdir
+  cp lib*/*.lib $archdir/lib
 )
 
 clean() (
   make distclean > /dev/null 2>&1
 )
+
+setup_environment() {
+  link_path=$(dirname "$(which cl)")
+  export PATH="$link_path:$PATH"
+  if link 2>&1 | grep -q 'Microsoft'; then
+    if gcc -v 2>&1 | grep -q 'version'; then
+      return 
+    else
+      ## gas-preprocessor.pl required the cpp.exe 
+      echo Can not found gcc, install the gcc in mingw and add it to path
+      exit 1
+    fi
+  else
+    ## make sure the link.exe in msvc default link, 
+    ## not the link in msys 
+    echo Set link failed, please rename the link.exe in msys bin folder
+    exit 1
+  fi
+}
 
 configure() (
   OPTIONS="
@@ -59,9 +87,8 @@ configure() (
     --enable-cross-compile          \
     --target-os=win32"
 
-  EXTRA_CFLAGS="-D_WIN32_WINNT=0x0602 -MDd -D_WINAPI_FAMILY=WINAPI_FAMILY_APP"
-  EXTRA_LDFLAGS="-NODEFAULTLIB:libcmt"
-
+  EXTRA_CFLAGS="-D_WIN32_WINNT=0x0603 -MDd -D_WINAPI_FAMILY=WINAPI_FAMILY_PC_APP"
+  EXTRA_LDFLAGS="-NODEFAULTLIB:libcmt -winmd -appcontaine"
 case "$arch"  in
     x86)
         OPTIONS+="
@@ -81,22 +108,27 @@ esac
 )
 
 build() (
+  echo build ffmpeg
   make 
 )
 
 echo Building ffmpeg in MSVC Debug config...
 
+probe_arch
+
+echo "Found arch is $arch"
+
 make_dirs
 
-#cd flvchangedffmpeg
- 
+setup_environment
+
 if $clean_build ; then
     clean
-
+    
+    echo config FFmpeg
     ## run configure, redirect to file because of a msys bug
     configure > config.out 2>&1
     CONFIGRETVAL=$?
-    
     
     ## show configure output
     cat config.out
@@ -109,3 +141,4 @@ if ! $clean_build || [ ${CONFIGRETVAL} -eq 0 ]; then
 fi
 
 cd ..
+
