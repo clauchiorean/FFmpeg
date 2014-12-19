@@ -8,7 +8,7 @@ This project can be used for building ffmpeg in WinRT platform. You can use this
 1. You need to prepare [MinGW+MSYS](http://www.mingw.org/) environment, and install mingw-developer-toolkit, mingw32-base, msys-base. 
 2. Download [gas-preprocessor.pl](https://github.com/FFmpeg/gas-preprocessor) , and copy it into  msys bin folder. 
 3. Run VS2013 ARM Cross Tools Command Prompt first, and then run the msys from the command prompt. If you want to build x86 version, you should launch VS2013 x86 Native Tools Command Prompt first.
-4. In the msys command prompt, open the ffmpeg folder, and run build_ffmpeg_msvc.sh. You can choice release or debug version, like 'sh build_ffmpeg_msvc.sh release', the default is debug. Run 'sh build_ffmpeg_msvc.sh quick', it means make ffmpeg without configure.
+4. In the msys command prompt, open the ffmpeg folder, and run build_ffmpeg_msvc.sh. You can choice release or debug version, like `sh build_ffmpeg_msvc.sh release`, the default is debug. Run `sh build_ffmpeg_msvc.sh quick`, it means make ffmpeg without configure.
 
 ## Libraries
 
